@@ -1,0 +1,38 @@
+---
+:from: МИНСК
+:to: ГРОДНО
+:when: 26.04.2013
+
+# :ob - общие; :s - сидячие; :p - плацкартные; :k - купейные, :sv - св, :m - мягкие;
+:check:
+- "615Б ГОМЕЛЬ ПАС - ГРОДНО":
+  - :p
+  - :k
+- "392В УНЕЧА - ГРОДНО":
+  - :p
+  - :k
+
+# optional
+:delay: 30
+
+# optional
+:notify:
+- :email:
+    :to: to@email
+    :from: from@email
+    # :subject: Ticket notification
+    :server: smtp_server
+    # :login: login
+    # :password: password
+    # :authtype: :plain
+- :beep:
+    # :frequency: 2000
+    # :duration: 500
+    # :times: 3
+- :sound:
+    # :file: c:\Windows\Media\chimes.wav
+- :msg:
+    # :title: Check
+
+# optional
+:start_page: "https://poezd.rw.by/wps/portal/home/rp/schedule/!ut/p/c5/dY_LdoIwFEW_pR_QlctTHKZEQUVsBESYsEJ5lEcJJRro39eujj17uPfkoBQ9GJhsanZr-MB6dEWpmekW3V5wdDAV01jDLvDOYaQRxTJUtEdp3fP8UcYk4QsRx9nGpOq4s9R5J1k-pW0vBI1I0lXSKttpXEmCa6ua9wuhg-vLuCoaW57De_hNPw11Uvyfgq1p721YsIQ372DoDfsotdFy3osBjld4E3eRznxr6sNURP3pVc2ok9ksESj-e2BmtoNdfeUBnNQLgOobAYUo0GCn_Xt4MgzId_lXicYuh1bHL78fFsjL/dl3/d3/L2dJQSEvUUt3QS9ZQnZ3LzZfNDhRRlZBVUs2UEZMRDBJU1RDTEZIRTEwMTA!/"
