@@ -214,19 +214,32 @@ MESSAGE
 
 end
 
-OptionParser.new do |opts|
-   opts.banner = "Usage: #{$0} [options] <config_file>"
-   opts.on( '-v', '--verbose', 'Run verbosely' ) do
-     Console.level = :debug
-   end
+options = OptionParser.new do |opts|
+  opts.banner = "Usage: #{$0} [options] <config_file>"
 
-   opts.on( '-h', '--help', 'Show this message' ) do
-     puts opts
-     exit
-   end
-end.parse!
+  opts.on( '-v', '--verbose', 'Run verbosely' ) do
+    Console.level = :debug
+  end
+
+  opts.on( '-h', '--help', 'Show this message' ) do
+    puts opts
+    exit
+  end
+end
+
+begin
+  options.parse!
+rescue OptionParser::InvalidOption
+  puts options
+  exit 1
+end
 
 Console.puts "Reading configuration file"
+file = ARGV[-1]
+unless file
+  puts options
+  exit 1
+end
 TIMEOUT = 300
 DEFAULTS = {
   delay: 30,
@@ -234,7 +247,7 @@ DEFAULTS = {
   notify: [],
 }
 YAML::ENGINE.yamler = 'psych'
-File.open(ARGV[-1]) do |f|
+File.open(file) do |f|
   @config = DEFAULTS.merge(YAML::load(f))
 end
 Console.debug @config.to_yaml
