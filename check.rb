@@ -2,10 +2,12 @@
 
 require 'watir-webdriver'
 require 'yaml'
+require 'optparse'
 
 class Console
   require 'iconv'
   @@c = Iconv.new('CP866', 'UTF-8')
+  @@level = :info
 
   def self.puts(text = nil)
     text.nil? ? STDOUT.puts : STDOUT.puts(@@c.iconv(text.to_s))
@@ -14,6 +16,20 @@ class Console
   def self.print(text)
     STDOUT.print(@@c.iconv(text.to_s))
     STDOUT.flush
+  end
+
+  def self.level=(level)
+    @@level = level
+  end
+
+  def self.debug(text)
+    return unless @@level == :debug
+    if text.is_a?(Exception)
+      STDOUT.puts(text.message)
+      STDOUT.puts(text.backtrace.join("\n"))
+    else
+      puts(text)
+    end
   end
 end
 
@@ -32,12 +48,11 @@ def check_page_content
 end
 
 def find_train_row(train)
-  begin
-    link = @browser.link(:onclick, /#{train}/)
-    link.parent.parent
-  rescue
-    nil
-  end
+  link = @browser.link(:onclick, /#{train}/)
+  link.parent.parent
+rescue => e
+  Console.debug(e)
+  nil
 end
 
 CELL_INDECES = {ob: 7, s: 8, p: 9, k: 10, sv: 11, m: 12}
@@ -102,6 +117,7 @@ module NotificationSystem
         send_email(params)
       rescue Exception => e
         Console.puts "Unable to send email to #{params[:to]}: #{e}"
+        Console.debug(e)
       else
         Console.puts "Email was sent to #{params[:to]}"
       end
@@ -149,8 +165,9 @@ MESSAGE
     begin
       require 'win32/sound'
       include Win32
-    rescue LoadError
+    rescue LoadError => e
       Console.puts "#{self.name} is unavailable"
+      Console.debug(e)
     end
 
     DEFAULTS = {file: "c:\\Windows\\Media\\chimes.wav"}
@@ -160,6 +177,7 @@ MESSAGE
       Sound.play(params[:file])
     rescue Exception => e
       Console.puts "Unable to play a file #{params[:file]}: #{e}"
+      Console.debug(e)
     end
   end
 
@@ -167,8 +185,9 @@ MESSAGE
     begin
       require 'win32/sound'
       include Win32
-    rescue LoadError
+    rescue LoadError => e
       Console.puts "#{self.name} is unavailable"
+      Console.debug(e)
     end
 
     DEFAULTS = {frequency: 2000, duration: 1000, times: 1}
@@ -181,6 +200,7 @@ MESSAGE
       end
     rescue Exception => e
       Console.puts "Unable to beep: #{e}"
+      Console.debug(e)
     end
   end
 
@@ -194,6 +214,18 @@ MESSAGE
 
 end
 
+OptionParser.new do |opts|
+   opts.banner = "Usage: #{$0} [options] <config_file>"
+   opts.on( '-v', '--verbose', 'Run verbosely' ) do
+     Console.level = :debug
+   end
+
+   opts.on( '-h', '--help', 'Show this message' ) do
+     puts opts
+     exit
+   end
+end.parse!
+
 Console.puts "Reading configuration file"
 TIMEOUT = 300
 DEFAULTS = {
@@ -202,10 +234,10 @@ DEFAULTS = {
   notify: [],
 }
 YAML::ENGINE.yamler = 'psych'
-File.open(ARGV[0]) do |f|
+File.open(ARGV[-1]) do |f|
   @config = DEFAULTS.merge(YAML::load(f))
 end
-Console.puts @config.to_yaml
+Console.debug @config.to_yaml
 
 Console.puts "Starting the browser"
 client = Selenium::WebDriver::Remote::Http::Default.new
@@ -236,15 +268,18 @@ loop do
       sleep_and_reload
     end
 
-  rescue Errno::ECONNREFUSED
+  rescue Errno::ECONNREFUSED => e
     Console.puts "Browser was closed. Exiting"
+    Console.debug(e)
     break
-  rescue Timeout::Error
+  rescue Timeout::Error => e
     Console.puts "Timeout #{TIMEOUT} sec. Starting from scratch in #{@config[:delay]} sec"
+    Console.debug(e)
     sleep(@config[:delay])
     retry
   rescue Exception => e
     Console.puts "Page is broken. Starting from scratch in #{@config[:delay]} sec"
+    Console.debug(e)
     sleep(@config[:delay])
     retry
   end
