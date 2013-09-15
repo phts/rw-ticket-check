@@ -33,18 +33,33 @@ class Console
   end
 end
 
+def go_through_login_page
+  @browser.link(text: /Информация для пассажиров/).click
+  @browser.text_field(id: 'login').set(@config[:login][:username])
+  @browser.text_field(id: 'password').set(@config[:login][:password])
+  @browser.button(name: '_login').click
+  id_prefix = 'viewns_7_48QFVAUK6HA180IQAQVJU80004_'
+  @browser.checkbox(id: id("form1:conf", id_prefix)).click
+  @browser.button(id: id("form1:nextBtn", id_prefix)).click
+  @id_prefix = id_prefix
+end
+
+def id(suffix, prefix = @id_prefix)
+  "#{prefix}:#{suffix}"
+end
+
 def sleep_and_reload
   Console.puts "#{Time.new.to_s} sleep #{@config[:delay]} seconds and then reload"
   sleep(@config[:delay])
-  @browser.button(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:change:buttonSearch").click
+  @browser.button(id: id("change:buttonSearch")).click
   check_page_content
 end
 
 def check_page_content
-  raise "Broken page" unless @browser.span(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:text1").text == "Маршрут следования пассажира:" &&
-                             @browser.span(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:textRoute").text == "#{@config[:from]} - #{@config[:to]}" &&
-                             @browser.span(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:text2").text == "Дата отправления:" &&
-                             @browser.span(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:textDate").text == @config[:when]
+  raise "Broken page" unless @browser.span(id: id("text1")).text == "Маршрут следования пассажира:" &&
+                             @browser.span(id: id("textRoute")).text == "#{@config[:from]} - #{@config[:to]}" &&
+                             @browser.span(id: id("text2")).text == "Дата отправления:" &&
+                             @browser.span(id: id("textDate")).text == @config[:when]
 end
 
 def find_train_row(train)
@@ -261,12 +276,15 @@ loop do
   begin
     Console.puts "Navigating to a start page"
     @browser.goto(@config[:start_page])
-  
+
+    @id_prefix = 'viewns_7_48QFVAUK6P5060ISJLKGLD2007_'
+    go_through_login_page if @config[:login]
+
     Console.puts "Entering data"
-    @browser.text_field(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:form1:textDepStat").set(@config[:from])
-    @browser.text_field(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:form1:textArrStat").set(@config[:to])
-    @browser.text_field(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:form1:dob").set(@config[:when])
-    @browser.button(id: "viewns_7_48QFVAUK6P5060ISJLKGLD2007_:form1:buttonSearch").click
+    @browser.text_field(id: id("form1:textDepStat")).set(@config[:from])
+    @browser.text_field(id: id("form1:textArrStat")).set(@config[:to])
+    @browser.text_field(id: id("form1:dob")).set(@config[:when])
+    @browser.button(id: id("form1:buttonSearch")).click
 
     Console.puts "Working..."
     loop do

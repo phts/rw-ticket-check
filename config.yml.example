@@ -35,4 +35,9 @@
     # :title: Check
 
 # optional
+:login:
+  :username: MyUsername
+  :password: MyPassword
+
+# optional
 :start_page: "https://poezd.rw.by/wps/portal/home/rp/schedule/!ut/p/c5/dY_LdoIwFEW_pR_QlctTHKZEQUVsBESYsEJ5lEcJJRro39eujj17uPfkoBQ9GJhsanZr-MB6dEWpmekW3V5wdDAV01jDLvDOYaQRxTJUtEdp3fP8UcYk4QsRx9nGpOq4s9R5J1k-pW0vBI1I0lXSKttpXEmCa6ua9wuhg-vLuCoaW57De_hNPw11Uvyfgq1p721YsIQ372DoDfsotdFy3osBjld4E3eRznxr6sNURP3pVc2ok9ksESj-e2BmtoNdfeUBnNQLgOobAYUo0GCn_Xt4MgzId_lXicYuh1bHL78fFsjL/dl3/d3/L2dJQSEvUUt3QS9ZQnZ3LzZfNDhRRlZBVUs2UEZMRDBJU1RDTEZIRTEwMTA!/"
