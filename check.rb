@@ -3,27 +3,33 @@
 require 'watir-webdriver'
 require 'yaml'
 require 'optparse'
+require 'iconv'
 
 class Console
-  require 'iconv'
-  @@c = Iconv.new('CP866', 'UTF-8')
-  @@level = :info
+  include Singleton
 
-  def self.puts(text = nil)
-    text.nil? ? STDOUT.puts : STDOUT.puts(@@c.iconv(text.to_s))
+  attr_accessor :level
+
+  def self.method_missing(sym, *args, &block)
+    self.instance.send(sym, *args, &block)
   end
 
-  def self.print(text)
-    STDOUT.print(@@c.iconv(text.to_s))
+  def initialize
+    level = :info
+    @c = Iconv.new('CP866', 'UTF-8')
+  end
+
+  def puts(text = nil)
+    text.nil? ? STDOUT.puts : STDOUT.puts(@c.iconv(text.to_s))
+  end
+
+  def print(text)
+    STDOUT.print(@c.iconv(text.to_s))
     STDOUT.flush
   end
 
-  def self.level=(level)
-    @@level = level
-  end
-
-  def self.debug(text)
-    return unless @@level == :debug
+  def debug(text)
+    return unless level == :debug
     if text.is_a?(Exception)
       STDOUT.puts(text.message)
       STDOUT.puts(text.backtrace.join("\n"))
@@ -31,79 +37,6 @@ class Console
       puts(text)
     end
   end
-end
-
-def go_through_login_page
-  @browser.link(text: /Вход в систему/).click
-  @browser.text_field(id: 'login').set(@config[:login][:username])
-  @browser.text_field(id: 'password').set(@config[:login][:password])
-  @browser.button(name: '_login').click
-  id_prefix = 'viewns_7_48QFVAUK6HA180IQAQVJU80004_'
-  @browser.checkbox(id: id("form1:conf", id_prefix)).click
-  @id_prefix = id_prefix
-end
-
-def id(suffix, prefix = @id_prefix)
-  "#{prefix}:#{suffix}"
-end
-
-def sleep_and_reload
-  Console.puts "#{Time.new.to_s} sleep #{@config[:delay]} seconds and then reload"
-  sleep(@config[:delay])
-  @browser.link(id: id('viewFragmentT:linkSel1')).click
-  @browser.button(id: id("form1:buttonSearch")).click
-  check_page_content
-end
-
-def check_page_content
-  raise "Broken page" unless @browser.span(id: id("text1")).text == "Маршрут следования пассажира:" &&
-                             @browser.span(id: id("textRoute")).text == "#{@config[:from]} - #{@config[:to]}" &&
-                             @browser.span(id: id("text2")).text == "Дата отправления:" &&
-                             @browser.span(id: id("textDate")).text == @config[:when]
-end
-
-def find_train_row(train)
-  link = @browser.link(:onclick, /#{train}/)
-  link.parent.parent
-rescue => e
-  Console.debug(e)
-  nil
-end
-
-CELL_INDECES = {ob: 7, s: 8, p: 9, k: 10, sv: 11, m: 12}
-def ticket_count(train_row, type)
-  cell_index = CELL_INDECES[type]
-  cell = train_row.cell(index: cell_index)
-  span = cell.span(id: /#{ id("form2:tableEx1:.:text2#{ cell_index-7 }") }/) # . is for row index
-  begin
-    text = span.text
-    text.strip.to_i
-  rescue
-    0
-  end
-end
-
-def check_tickets(train, types)
-  Console.print "  #{train}"
-  train_row = find_train_row(train)
-  unless train_row
-    Console.puts " not found"
-    return
-  end
-
-  @previous_numbers ||= {}
-  @previous_numbers[train] ||= {}
-
-  types.each do |type|
-    current_number = ticket_count(train_row, type)
-    Console.print "  #{type}:#{current_number}"
-    if current_number > @previous_numbers[train][type].to_i
-      Console.puts
-      yield(type) if block_given?
-    end
-    @previous_numbers[train][type] = current_number
-  end
-  Console.puts
 end
 
 module NotificationSystem
@@ -230,6 +163,176 @@ MESSAGE
 
 end
 
+class App
+  TIMEOUT = 300
+
+  DEFAULTS = {
+    delay: 30,
+    start_page: "http://poezd.rw.by",
+    notify: [],
+  }
+
+  CELL_INDECES = {ob: 7, s: 8, p: 9, k: 10, sv: 11, m: 12}
+
+  LOGGED_IN_ID_PREFIX = 'viewns_7_48QFVAUK6HA180IQAQVJU80004_'
+  NOT_LOGGED_IN_ID_PREFIX = 'viewns_7_48QFVAUK6P5060ISJLKGLD2007_'
+
+  attr_reader :config
+
+  def initialize(config_file)
+    YAML::ENGINE.yamler = 'psych'
+    File.open(config_file) do |f|
+      @config = DEFAULTS.merge(YAML::load(f))
+    end
+    Console.debug config.to_yaml
+  end
+
+  def start
+    Console.puts "Starting the browser"
+    client = Selenium::WebDriver::Remote::Http::Default.new
+    client.timeout = TIMEOUT # seconds – default is 60
+    @browser = Watir::Browser.new(:firefox, :http_client => client)
+    start_main_loop
+  end
+
+  private
+
+  def start_main_loop
+    loop do
+      begin
+        Console.puts "Navigating to the start page #{config[:start_page].inspect}"
+        go_to_route_page
+
+        Console.puts "Entering data"
+        enter_data
+
+        Console.puts "Working..."
+        start_working_loop
+
+      rescue Errno::ECONNREFUSED => e
+        Console.puts "Browser was closed. Exiting"
+        Console.debug(e)
+        break
+      rescue Timeout::Error => e
+        Console.puts "Timeout #{TIMEOUT} sec. Starting from scratch in #{config[:delay]} sec"
+        Console.debug(e)
+        sleep(config[:delay])
+        retry
+      rescue => e
+        Console.puts "Page is broken. Starting from scratch in #{config[:delay]} sec"
+        Console.debug(e)
+        sleep(config[:delay])
+        retry
+      end
+    end
+  end
+
+  def start_working_loop
+    loop do
+      config[:check].each do |item|
+        train = item.first[0].strip
+        types = item.first[1]
+        check_tickets(train, types) do |type|
+          NotificationSystem::Notifier.new.notify(config[:notify], type, train, config[:from], config[:to], config[:when])
+        end
+      end
+
+      Console.puts "#{Time.new.to_s} sleep #{config[:delay]} seconds and then reload"
+      sleep(config[:delay])
+      reload
+      check_page_content
+    end
+  end
+
+  def go_to_route_page
+    @browser.goto(config[:start_page])
+
+    if config[:login]
+      @id_prefix = LOGGED_IN_ID_PREFIX
+      go_through_login_page
+    else
+      @id_prefix = NOT_LOGGED_IN_ID_PREFIX
+      @browser.link(text: /Расписание движения и стоимость проезда/).click
+    end
+  end
+
+  def go_through_login_page
+    @browser.link(text: /Вход в систему/).click
+    @browser.text_field(id: 'login').set(config[:login][:username])
+    @browser.text_field(id: 'password').set(config[:login][:password])
+    @browser.button(name: '_login').click
+    @browser.checkbox(id: id("form1:conf")).click
+  end
+
+  def enter_data
+    @browser.text_field(id: id("form1:textDepStat")).set(config[:from])
+    @browser.text_field(id: id("form1:textArrStat")).set(config[:to])
+    @browser.text_field(id: id("form1:dob")).set(config[:when])
+    @browser.button(id: id("form1:buttonSearch")).click
+  end
+
+  def check_tickets(train, types)
+    Console.print "  #{train}"
+    train_row = find_train_row(train)
+    unless train_row
+      Console.puts " not found"
+      return
+    end
+
+    @previous_numbers ||= {}
+    @previous_numbers[train] ||= {}
+
+    types.each do |type|
+      current_number = ticket_count(train_row, type)
+      Console.print "  #{type}:#{current_number}"
+      if current_number > @previous_numbers[train][type].to_i
+        Console.puts
+        yield(type) if block_given?
+      end
+      @previous_numbers[train][type] = current_number
+    end
+    Console.puts
+  end
+
+  def reload
+    # go back to the first page and then reenter data
+    @browser.link(id: id('viewFragmentT:linkSel1')).click
+    enter_data
+  end
+
+  def check_page_content
+    raise "Broken page" unless @browser.span(id: id("text1")).text == "Маршрут следования пассажира:" &&
+                               @browser.span(id: id("textRoute")).text == "#{config[:from]} - #{config[:to]}" &&
+                               @browser.span(id: id("text2")).text == "Дата отправления:" &&
+                               @browser.span(id: id("textDate")).text == config[:when]
+  end
+
+  def id(suffix)
+    "#{@id_prefix}:#{suffix}"
+  end
+
+  def find_train_row(train)
+    link = @browser.link(:onclick, /#{train}/)
+    link.parent.parent
+  rescue => e
+    Console.debug(e)
+    nil
+  end
+
+  def ticket_count(train_row, type)
+    cell_index = CELL_INDECES[type]
+    cell = train_row.cell(index: cell_index)
+    span = cell.span(id: /#{ id("form2:tableEx1:.:text2#{ cell_index-7 }") }/) # . is for row index
+    begin
+      text = span.text
+      text.strip.to_i
+    rescue => e
+      0
+    end
+  end
+end
+
+
 options = OptionParser.new do |opts|
   opts.banner = "Usage: #{$0} [options] <config_file>"
 
@@ -251,68 +354,11 @@ rescue OptionParser::InvalidOption
 end
 
 Console.puts "Reading configuration file"
-file = ARGV[-1]
-unless file
+config_file = ARGV[-1]
+unless config_file
   puts options
   exit 1
 end
-TIMEOUT = 300
-DEFAULTS = {
-  delay: 30,
-  start_page: "https://poezd.rw.by/wps/portal/home/rp/schedule/!ut/p/c5/dY_LdoIwFEW_pR_QlctTHKZEQUVsBESYsEJ5lEcJJRro39eujj17uPfkoBQ9GJhsanZr-MB6dEWpmekW3V5wdDAV01jDLvDOYaQRxTJUtEdp3fP8UcYk4QsRx9nGpOq4s9R5J1k-pW0vBI1I0lXSKttpXEmCa6ua9wuhg-vLuCoaW57De_hNPw11Uvyfgq1p721YsIQ372DoDfsotdFy3osBjld4E3eRznxr6sNURP3pVc2ok9ksESj-e2BmtoNdfeUBnNQLgOobAYUo0GCn_Xt4MgzId_lXicYuh1bHL78fFsjL/dl3/d3/L2dJQSEvUUt3QS9ZQnZ3LzZfNDhRRlZBVUs2UEZMRDBJU1RDTEZIRTEwMTA!/",
-  notify: [],
-}
-YAML::ENGINE.yamler = 'psych'
-File.open(file) do |f|
-  @config = DEFAULTS.merge(YAML::load(f))
-end
-Console.debug @config.to_yaml
 
-Console.puts "Starting the browser"
-client = Selenium::WebDriver::Remote::Http::Default.new
-client.timeout = TIMEOUT # seconds – default is 60
-@browser = Watir::Browser.new(:firefox, :http_client => client)
-
-loop do
-  begin
-    Console.puts "Navigating to a start page"
-    @browser.goto(@config[:start_page])
-
-    @id_prefix = 'viewns_7_48QFVAUK6P5060ISJLKGLD2007_'
-    go_through_login_page if @config[:login]
-
-    Console.puts "Entering data"
-    @browser.text_field(id: id("form1:textDepStat")).set(@config[:from])
-    @browser.text_field(id: id("form1:textArrStat")).set(@config[:to])
-    @browser.text_field(id: id("form1:dob")).set(@config[:when])
-    @browser.button(id: id("form1:buttonSearch")).click
-
-    Console.puts "Working..."
-    loop do
-      @config[:check].each do |item|
-        train = item.first[0].strip
-        types = item.first[1]
-        check_tickets(train, types) do |type|
-          NotificationSystem::Notifier.new.notify(@config[:notify], type, train, @config[:from], @config[:to], @config[:when])
-        end
-      end
-
-      sleep_and_reload
-    end
-
-  rescue Errno::ECONNREFUSED => e
-    Console.puts "Browser was closed. Exiting"
-    Console.debug(e)
-    break
-  rescue Timeout::Error => e
-    Console.puts "Timeout #{TIMEOUT} sec. Starting from scratch in #{@config[:delay]} sec"
-    Console.debug(e)
-    sleep(@config[:delay])
-    retry
-  rescue Exception => e
-    Console.puts "Page is broken. Starting from scratch in #{@config[:delay]} sec"
-    Console.debug(e)
-    sleep(@config[:delay])
-    retry
-  end
-end
+app = App.new(config_file)
+app.start
