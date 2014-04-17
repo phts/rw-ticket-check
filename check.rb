@@ -34,13 +34,12 @@ class Console
 end
 
 def go_through_login_page
-  @browser.link(text: /Информация для пассажиров/).click
+  @browser.link(text: /Вход в систему/).click
   @browser.text_field(id: 'login').set(@config[:login][:username])
   @browser.text_field(id: 'password').set(@config[:login][:password])
   @browser.button(name: '_login').click
   id_prefix = 'viewns_7_48QFVAUK6HA180IQAQVJU80004_'
   @browser.checkbox(id: id("form1:conf", id_prefix)).click
-  @browser.button(id: id("form1:nextBtn", id_prefix)).click
   @id_prefix = id_prefix
 end
 
@@ -51,7 +50,8 @@ end
 def sleep_and_reload
   Console.puts "#{Time.new.to_s} sleep #{@config[:delay]} seconds and then reload"
   sleep(@config[:delay])
-  @browser.button(id: id("change:buttonSearch")).click
+  @browser.link(id: id('viewFragmentT:linkSel1')).click
+  @browser.button(id: id("form1:buttonSearch")).click
   check_page_content
 end
 
@@ -72,8 +72,9 @@ end
 
 CELL_INDECES = {ob: 7, s: 8, p: 9, k: 10, sv: 11, m: 12}
 def ticket_count(train_row, type)
-  cell = train_row.cell(index: CELL_INDECES[type])
-  span = cell.span(class: "outputText")
+  cell_index = CELL_INDECES[type]
+  cell = train_row.cell(index: cell_index)
+  span = cell.span(id: /#{ id("form2:tableEx1:.:text2#{ cell_index-7 }") }/) # . is for row index
   begin
     text = span.text
     text.strip.to_i
