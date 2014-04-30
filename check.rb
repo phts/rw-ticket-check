@@ -3,7 +3,6 @@
 require 'watir-webdriver'
 require 'yaml'
 require 'optparse'
-require 'iconv'
 
 class Console
   include Singleton
@@ -16,15 +15,14 @@ class Console
 
   def initialize
     level = :info
-    @c = Iconv.new('CP866', 'UTF-8')
   end
 
   def puts(text = nil)
-    text.nil? ? STDOUT.puts : STDOUT.puts(@c.iconv(text.to_s))
+    text.nil? ? STDOUT.puts : STDOUT.puts(encode(text))
   end
 
   def print(text)
-    STDOUT.print(@c.iconv(text.to_s))
+    STDOUT.print(encode(text))
     STDOUT.flush
   end
 
@@ -36,6 +34,12 @@ class Console
     else
       puts(text)
     end
+  end
+
+  private
+
+  def encode(text)
+    text.encode('CP866', invalid: :replace, undef: :replace, replace: '?')
   end
 end
 
@@ -93,7 +97,6 @@ MESSAGE
 
   class MsgNotifier
     require 'dl'
-    require 'iconv'
 
     def notify(params)
       params = params.merge({text: "#{params[:ticket_from]} - #{params[:ticket_to]}\n#{params[:ticket_when]}\n\nНовые #{MESSAGES[params[:type]]} билеты на поезд #{params[:train]}"})
@@ -103,10 +106,13 @@ MESSAGE
     private
 
     def show_message_box(params = {})
-      c = Iconv.new('WINDOWS-1251', 'UTF-8')
       user32 = DL.dlopen('user32')
       msgbox = DL::CFunc.new(user32['MessageBoxA'], DL::TYPE_LONG, 'MessageBox')
-      msgbox.call([0, c.iconv(params[:text]), c.iconv(params[:title] || "#{params[:timestamp].to_s}"), params[:buttons] || 0].pack('L!ppL!').unpack('L!*'))
+      msgbox.call([0, encode(params[:text]), encode(params[:title] || "#{params[:timestamp].to_s}"), params[:buttons] || 0].pack('L!ppL!').unpack('L!*'))
+    end
+
+    def encode(text)
+      text.encode('WINDOWS-1251', invalid: :replace, undef: :replace, replace: '?')
     end
   end
 
