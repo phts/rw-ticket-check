@@ -185,12 +185,13 @@ class App
 
   attr_reader :config
 
-  def initialize(config_file)
+  def initialize(config_file, debug_mode)
     YAML::ENGINE.yamler = 'psych'
     File.open(config_file) do |f|
       @config = DEFAULTS.merge(YAML::load(f))
     end
     Console.debug config.to_yaml
+    @debug_mode = debug_mode
   end
 
   def start
@@ -228,6 +229,10 @@ class App
         Console.puts "Page is broken. Starting from scratch in #{config[:delay]} sec"
         Console.debug(e)
         sleep(config[:delay])
+        if @debug_mode
+          Console.puts("Debug mode: Stopped. Press Enter to continue")
+          STDIN.gets
+        end
         retry
       end
     end
@@ -360,6 +365,10 @@ options = OptionParser.new do |opts|
   opts.on('-t', '--test', 'Test configured notifications and exit') do
     $TEST = true
   end
+
+  opts.on('-d', '--debug', 'Debug mode: stop on "broken page" errors') do
+    $DEBUG_MODE = true
+  end
 end
 
 begin
@@ -379,6 +388,6 @@ end
 app = if $TEST
         TestApp.new(config_file)
       else
-        App.new(config_file)
+        App.new(config_file, $DEBUG_MODE)
       end
 app.start
