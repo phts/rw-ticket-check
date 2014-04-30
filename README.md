@@ -6,6 +6,7 @@
 
 Требуется:
 
+* [Firefox](http://www.mozilla.org/en-US/firefox/new/)
 * [Ruby](http://www.ruby-lang.org/en/) (≥ 1.9.2)
 * [Watir](http://watirwebdriver.com)
 * [win32-sound](https://rubygems.org/gems/win32-sound) для `:sound`/`:beep` уведомлений
