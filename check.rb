@@ -338,6 +338,12 @@ class App
   end
 end
 
+class TestApp < App
+  def start
+    NotificationSystem::Notifier.new.notify(config[:notify], :m, '42 МИНСК - МЕЛЬБУРН', 'Минск', 'Мельбурн', 'Сегодня')
+  end
+end
+
 
 options = OptionParser.new do |opts|
   opts.banner = "Usage: #{$0} [options] <config_file>"
@@ -349,6 +355,10 @@ options = OptionParser.new do |opts|
   opts.on( '-h', '--help', 'Show this message' ) do
     puts opts
     exit
+  end
+
+  opts.on('-t', '--test', 'Test configured notifications and exit') do
+    $TEST = true
   end
 end
 
@@ -366,5 +376,9 @@ unless config_file
   exit 1
 end
 
-app = App.new(config_file)
+app = if $TEST
+        TestApp.new(config_file)
+      else
+        App.new(config_file)
+      end
 app.start
