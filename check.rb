@@ -186,6 +186,7 @@ class App
   attr_reader :config
 
   def initialize(config_file, debug_mode)
+    Console.puts "Reading configuration file #{config_file.inspect}"
     YAML::ENGINE.yamler = 'psych'
     File.open(config_file) do |f|
       @config = DEFAULTS.merge(YAML::load(f))
@@ -378,9 +379,8 @@ rescue OptionParser::InvalidOption
   exit 1
 end
 
-DEFAULT_FILE = "config.yml"
 
-Console.puts "Reading configuration file"
+DEFAULT_FILE = "config.yml"
 config_file = ARGV[-1] || DEFAULT_FILE
 
 app = if $TEST
