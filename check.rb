@@ -386,7 +386,7 @@ unless config_file
 end
 
 app = if $TEST
-        TestApp.new(config_file)
+        TestApp.new(config_file, $DEBUG_MODE)
       else
         App.new(config_file, $DEBUG_MODE)
       end
