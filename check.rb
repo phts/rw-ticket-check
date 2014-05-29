@@ -351,7 +351,7 @@ end
 
 
 options = OptionParser.new do |opts|
-  opts.banner = "Usage: #{$0} [options] <config_file>"
+  opts.banner = "Usage: #{$0} [options] [<config_file>]"
 
   opts.on( '-v', '--verbose', 'Run verbosely' ) do
     Console.level = :debug
@@ -378,12 +378,10 @@ rescue OptionParser::InvalidOption
   exit 1
 end
 
+DEFAULT_FILE = "config.yml"
+
 Console.puts "Reading configuration file"
-config_file = ARGV[-1]
-unless config_file
-  puts options
-  exit 1
-end
+config_file = ARGV[-1] || DEFAULT_FILE
 
 app = if $TEST
         TestApp.new(config_file, $DEBUG_MODE)
