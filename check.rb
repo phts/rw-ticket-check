@@ -55,7 +55,13 @@ module NotificationSystem
       config.each do |item|
         notifier = item.first[0]
         params = item.first[1] || {}
-        NotifierBuilder.get(notifier).notify(params.merge({type: type, train: train, timestamp: timestamp, ticket_from: from, ticket_to: to, ticket_when: wwhen}))
+        begin
+          NotifierBuilder.get(notifier).notify(params.merge({type: type, train: train, timestamp: timestamp, ticket_from: from, ticket_to: to, ticket_when: wwhen}))
+        rescue => e
+          Console.puts "Failed to notify via #{notifier.inspect}"
+          Console.debug(e)
+          next
+        end
       end
     end
 
