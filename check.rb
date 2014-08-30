@@ -18,11 +18,11 @@ options = OptionParser.new do |opts|
   end
 
   opts.on('-t', '--test', 'Test configured notifications and exit') do
-    $TEST = true
+    @test = true
   end
 
   opts.on('-d', '--debug', 'Debug mode: stop on "broken page" errors') do
-    $DEBUG_MODE = true
+    @debug_mode = true
   end
 end
 
@@ -37,11 +37,11 @@ end
 DEFAULT_FILE = "config.yml"
 config_file = ARGV[-1] || DEFAULT_FILE
 
-app = if $TEST
+app = if @test
         require_relative "check/test_app"
-        TestApp.new(config_file, $DEBUG_MODE)
+        TestApp.new(config_file, @debug_mode)
       else
         require_relative "check/app"
-        App.new(config_file, $DEBUG_MODE)
+        App.new(config_file, @debug_mode)
       end
 app.start
