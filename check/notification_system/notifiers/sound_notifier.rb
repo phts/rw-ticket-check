@@ -7,8 +7,8 @@ module NotificationSystem
         require 'win32/sound'
         include Win32
       rescue LoadError => e
-        Console.puts "#{self.name} is unavailable"
-        Console.debug(e)
+        console.puts "#{self.name} is unavailable"
+        console.debug(e)
       end
 
       DEFAULTS = {file: "c:\\Windows\\Media\\chimes.wav"}
@@ -17,8 +17,8 @@ module NotificationSystem
         params = DEFAULTS.merge(params)
         Sound.play(params[:file])
       rescue Exception => e
-        Console.puts "Unable to play a file #{params[:file]}: #{e}"
-        Console.debug(e)
+        console.puts "Unable to play a file #{params[:file]}: #{e}"
+        console.debug(e)
       end
     end
   end

@@ -19,17 +19,17 @@ class App
   attr_reader :config
 
   def initialize(config_file, debug_mode)
-    Console.puts "Reading configuration file #{config_file.inspect}"
+    console.puts "Reading configuration file #{config_file.inspect}"
     YAML::ENGINE.yamler = 'psych'
     File.open(config_file) do |f|
       @config = DEFAULTS.merge(YAML::load(f))
     end
-    Console.debug config.to_yaml
+    console.debug config.to_yaml
     @debug_mode = debug_mode
   end
 
   def start
-    Console.puts "Starting the browser"
+    console.puts "Starting the browser"
     client = Selenium::WebDriver::Remote::Http::Default.new
     client.timeout = TIMEOUT # seconds – default is 60
     @browser = Watir::Browser.new(:firefox, :http_client => client)
@@ -41,30 +41,30 @@ class App
   def start_main_loop
     loop do
       begin
-        Console.puts "Navigating to the start page #{config[:start_page].inspect}"
+        console.puts "Navigating to the start page #{config[:start_page].inspect}"
         go_to_route_page
 
-        Console.puts "Entering data"
+        console.puts "Entering data"
         enter_data
 
-        Console.puts "Working..."
+        console.puts "Working..."
         start_working_loop
 
       rescue Errno::ECONNREFUSED => e
-        Console.puts "Browser was closed. Exiting"
-        Console.debug(e)
+        console.puts "Browser was closed. Exiting"
+        console.debug(e)
         break
       rescue Timeout::Error => e
-        Console.puts "Timeout #{TIMEOUT} sec. Starting from scratch in #{config[:delay]} sec"
-        Console.debug(e)
+        console.puts "Timeout #{TIMEOUT} sec. Starting from scratch in #{config[:delay]} sec"
+        console.debug(e)
         sleep(config[:delay])
         retry
       rescue => e
-        Console.puts "Page is broken. Starting from scratch in #{config[:delay]} sec"
-        Console.debug(e)
+        console.puts "Page is broken. Starting from scratch in #{config[:delay]} sec"
+        console.debug(e)
         sleep(config[:delay])
         if @debug_mode
-          Console.puts("Debug mode: Stopped. Press Enter to continue")
+          console.puts("Debug mode: Stopped. Press Enter to continue")
           STDIN.gets
         end
         retry
@@ -82,7 +82,7 @@ class App
         end
       end
 
-      Console.puts "#{Time.new.to_s} sleep #{config[:delay]} seconds and then reload"
+      console.puts "#{Time.new.to_s} sleep #{config[:delay]} seconds and then reload"
       sleep(config[:delay])
       reload
       check_page_content
@@ -117,10 +117,10 @@ class App
   end
 
   def check_tickets(train, types)
-    Console.print "  #{train}"
+    console.print "  #{train}"
     train_row = find_train_row(train)
     unless train_row
-      Console.puts " not found"
+      console.puts " not found"
       return
     end
 
@@ -129,14 +129,14 @@ class App
 
     types.each do |type|
       current_number = ticket_count(train_row, type)
-      Console.print "  #{type}:#{current_number}"
+      console.print "  #{type}:#{current_number}"
       if current_number > @previous_numbers[train][type].to_i
-        Console.puts
+        console.puts
         yield(type) if block_given?
       end
       @previous_numbers[train][type] = current_number
     end
-    Console.puts
+    console.puts
   end
 
   def reload
@@ -160,7 +160,7 @@ class App
     link = @browser.link(:onclick, /#{train}/)
     link.parent.parent
   rescue => e
-    Console.debug(e)
+    console.debug(e)
     nil
   end
 

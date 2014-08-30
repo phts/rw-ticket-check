@@ -9,7 +9,7 @@ options = OptionParser.new do |opts|
   opts.banner = "Usage: #{$0} [options] [<config_file>]"
 
   opts.on( '-v', '--verbose', 'Run verbosely' ) do
-    Console.level = :debug
+    console.level = :debug
   end
 
   opts.on( '-h', '--help', 'Show this message' ) do

@@ -11,10 +11,10 @@ module NotificationSystem
         begin
           send_email(params)
         rescue Exception => e
-          Console.puts "Unable to send email to #{params[:to]}: #{e}"
-          Console.debug(e)
+          console.puts "Unable to send email to #{params[:to]}: #{e}"
+          console.debug(e)
         else
-          Console.puts "Email was sent to #{params[:to]}"
+          console.puts "Email was sent to #{params[:to]}"
         end
       end
 

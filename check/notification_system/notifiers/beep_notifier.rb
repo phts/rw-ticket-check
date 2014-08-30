@@ -7,8 +7,8 @@ module NotificationSystem
         require 'win32/sound'
         include Win32
       rescue LoadError => e
-        Console.puts "#{self.name} is unavailable"
-        Console.debug(e)
+        console.puts "#{self.name} is unavailable"
+        console.debug(e)
       end
 
       DEFAULTS = {frequency: 2000, duration: 1000, times: 1}
@@ -20,8 +20,8 @@ module NotificationSystem
           sleep(params[:duration] / 1000.0)
         end
       rescue Exception => e
-        Console.puts "Unable to beep: #{e}"
-        Console.debug(e)
+        console.puts "Unable to beep: #{e}"
+        console.debug(e)
       end
     end
   end
