@@ -15,7 +15,7 @@ class Console
   end
 
   def initialize
-    level = :info
+    self.level = :info
   end
 
   def puts(text = nil)
