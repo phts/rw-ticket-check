@@ -146,10 +146,13 @@ class App
   end
 
   def check_page_content
-    raise "Broken page" unless @browser.span(id: id("text1")).text == "Маршрут следования пассажира:" &&
-                               @browser.span(id: id("textRoute")).text == "#{config[:from]} - #{config[:to]}" &&
-                               @browser.span(id: id("text2")).text == "Дата отправления:" &&
-                               @browser.span(id: id("textDate")).text == config[:when]
+    raise "Broken page" unless @browser.span(id: id("text1")).text == "Маршрут следования пассажира:"
+    route_span = @browser.span(id: id("textRoute"))
+    raise "Broken page" unless route_span.text == "#{config[:from]} - #{config[:to]}"
+
+    date_span = route_span.parent.parent.p(index: 1)
+    raise "Broken page" unless /Дата отправления:/ =~ date_span.text &&
+                               /#{config[:when]}/ =~ date_span.text
   end
 
   def id(suffix)
