@@ -1,7 +1,7 @@
 module NotificationSystem
   module Notifiers
     class MsgNotifier
-      require 'dl'
+      require 'fiddle'
 
       def notify(params)
         params = params.merge({text: "#{params[:ticket_from]} - #{params[:ticket_to]}\n#{params[:ticket_when]}\n\nНовые #{MESSAGES[params[:type]]} билеты на поезд #{params[:train]}"})
@@ -11,9 +11,16 @@ module NotificationSystem
       private
 
       def show_message_box(params = {})
-        user32 = DL.dlopen('user32')
-        msgbox = DL::CFunc.new(user32['MessageBoxA'], DL::TYPE_LONG, 'MessageBox')
-        msgbox.call([0, encode(params[:text]), encode(params[:title] || "#{params[:timestamp].to_s}"), params[:buttons] || 0].pack('L!ppL!').unpack('L!*'))
+        text = encode(params[:text])
+        title = encode(params[:title] || "#{params[:timestamp].to_s}")
+        buttons = params[:buttons] || 0
+        func_args = [0, text, title, buttons].pack('L!ppL!').unpack('L!*')
+
+        user32 = Fiddle.dlopen('user32')
+        msgbox = Fiddle::Function.new(user32['MessageBoxA'],
+                                      [Fiddle::TYPE_LONG, Fiddle::TYPE_LONG, Fiddle::TYPE_LONG, Fiddle::TYPE_LONG],
+                                      Fiddle::TYPE_VOIDP)
+        msgbox.call(*func_args)
       end
 
       def encode(text)
