@@ -20,7 +20,11 @@ class App
 
   def initialize(config_file, debug_mode)
     console.puts "Reading configuration file #{config_file.inspect}"
-    YAML::ENGINE.yamler = 'psych'
+    begin
+      YAML::ENGINE.yamler = 'psych'
+    rescue NameError
+      # Seems to be removed since Ruby 2.2.0
+    end
     File.open(config_file) do |f|
       @config = DEFAULTS.merge(YAML::load(f))
     end
