@@ -86,7 +86,3 @@
 	* `:usename` - Имя пользователя.
 
 	* `:password` - Пароль.
-
-## Copyright
-
-© 2015 Phil Tsarik
